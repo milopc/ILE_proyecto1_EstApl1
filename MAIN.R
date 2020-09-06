@@ -60,17 +60,17 @@ ggplot(conteo_proced_día, aes(día, n)) +
 datos_comp.2020 <- filter(datos, día_año_proced <= 182)
 
 # Crear base de no. de procedimientos por año hasta 30 de junio por año
-conteo_proced_año <-tally(group_by(datos_comp.2020, año_proced))
+conteo_proced_compaño <-tally(group_by(datos_comp.2020, año_proced))
 
 # Graficar no. de procedimientos por año hasta 30 de junio por año
 ggplot()+
-  geom_col(aes(x = conteo_proced_año$año_proced, y= conteo_proced_año$n, 
-               color = conteo_proced_año$año_proced, 
-               fill = conteo_proced_año$año_proced), show.legend = FALSE)+
+  geom_col(aes(x = conteo_proced_compaño$año_proced, y= conteo_proced_compaño$n, 
+               color = conteo_proced_compaño$año_proced, 
+               fill = conteo_proced_compaño$año_proced), show.legend = FALSE)+
   labs(
-    title = "Comparativo de procedimientos de ILE por año",
+    title = "Procedimientos de ILE por día, por año",
     subtitle = "Datos comparativos hasta el 30 de junio, por año",
-    x = "Año de procedimiento",
+    x = "Día (núm.)",
     y = "Número de procedimientos hasta el 30 de junio",
     caption = "FUENTE: Datos de la Ssa, CDMX"
   )
@@ -89,10 +89,17 @@ prom_dia_comp2020 <- mean(conteo_proced_día_comp2020$n)
 
 # Graficar no. de procedimientos por día hasta 30 de junio de cada año 
 ggplot(conteo_proced_día_comp2020, aes(día, n)) + 
-  geom_line(aes(color = año)) + 
+  geom_line(aes(color = año), show.legend = FALSE) + 
   facet_grid(año ~ .)+
   geom_hline(yintercept = prom_dia_comp2020, color = "pink")+ #promedio diario
-  geom_vline(xintercept = 83, color = "pink") # Inicio de JNSD
+  geom_vline(xintercept = 83, color = "pink")+ # Inicio de JNSD
+  labs(
+    title = "Comparativo de procedimientos de ILE por año",
+    subtitle = "Datos comparativos hasta el 30 de junio, por año",
+    x = "Año de procedimiento",
+    y = "Número de procedimientos hasta el 30 de junio",
+    caption = "FUENTE: Datos de la Ssa, CDMX"
+  )
   
 datos_comp_sgd <- filter(datos, !(is.na(p_semgest)) & !(is.na(c_dolor)))
 
@@ -115,7 +122,29 @@ names(dolor)[2] = "NO"
 
 table(conteo_semgest$p_semgest,dolor)
 
-ggplot()+
-  geom_point(aes(x = conteo_semgest$p_semgest, y = dolor))
+ggplot(dolor)+
+  geom_density(aes(x = (dolor$SI)))+
+  geom_density(aes(x = (dolor$NO)))
+
+conteo_semgestdol <- mutate(conteo_semgest, `si` = dolor$SI, `no` = dolor$NO)
+summarise(conteo_semgestdol)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
