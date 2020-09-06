@@ -126,34 +126,6 @@ ggplot(conteo_semgest, aes(x = p_semgest))+
     caption = "FUENTE: Datos de la Ssa, CDMX"
   )
 
-# Crear base con procedimientos que presentaron y no presentaron
-# dolor por semana de gestación
-dolor <- data.frame(Sí = SI, No = NO)
-names(dolor)[1] = "SI"
-names(dolor)[2] = "NO"
-
-ggplot(dolor)+
-  geom_point(aes(x = c(1:14), y = (SI)), color = "#102437")+
-  geom_point(aes(x = c(1:14), y = (NO)), color = "#5AA8E6")+
-  geom_smooth(aes(x = c(1:14), y = (SI)), color = "#102437",
-              method = "lm", alpha = 0.5, se = F)+
-  geom_smooth(aes(x = c(1:14), y = (NO)), color = "#5AA8E6",
-              method = "lm", alpha = 0.5, se = F)+
-  geom_line(aes(x = c(1:14), y = (SI)), color = "#102437")+
-  geom_line(aes(x = c(1:14), y = (NO)), color = "#5AA8E6")+
-  xlim(0, 14) + ylim(0, 3630)+
-  theme(axis.text.x = element_text(angle = 0, vjust = 0.5)) +
-  scale_x_continuous(labels = as.character(c(1:14)), breaks = c(1:14))+
-  labs(
-    title = "Conteo de procedimientos por semana de gestación",
-    subtitle = "Pacientes con dolor y sin dolor post procedimiento",
-    x = "Semana de gestación",
-    y = "Número de pacientes",
-    caption = "FUENTE: Datos de la Ssa, CDMX"
-  )+
-  scale_fill_discrete(name = "Dose", labels = c("A", "B"))
-  
-
 
 
 
