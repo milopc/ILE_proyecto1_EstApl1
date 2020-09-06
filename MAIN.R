@@ -126,8 +126,6 @@ ggplot(dolor)+
   geom_density(aes(x = (dolor$SI)))+
   geom_density(aes(x = (dolor$NO)))
 
-conteo_semgestdol <- mutate(conteo_semgest, `si` = dolor$SI, `no` = dolor$NO)
-summarise(conteo_semgestdol)
 
 
 
