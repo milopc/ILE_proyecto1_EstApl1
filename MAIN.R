@@ -119,7 +119,7 @@ kable(frecuencia_antic, booktabs = T,
   kable_styling(latex_options = "hold_positions")
 
 
-# Tabla de si se presentó dolor o no
+# Crear base de si se presentó dolor o no
 dolor <- as.data.frame(table(datos$c_dolor))
 colnames(dolor) <- c("r","Cantidad")
 
@@ -223,13 +223,11 @@ ggplot(conteo_proced_día_comp2020, aes(día, n)) +
     y = "Número de procedimientos hasta el 30 de junio",
     caption = "FUENTE: Datos de la Ssa, CDMX"
   )
-  
-datos_comp_sgd <- filter(datos, !(is.na(p_semgest)) & !(is.na(c_dolor)))
 
-# Crear base de no. de procedimientos por p_semgest y conteo de c_dolor en SI o NO
+# Creamos base que nos permita realizar el estudio por semana de geestación
+datos_comp_sgd <- filter(datos, !(is.na(p_semgest)))
 conteo_semgest <- tally(group_by(datos_comp_sgd, p_semgest))
-`SI` = tally(group_by(datos_comp_sgd, p_semgest),c_dolor =="SI")[2]
-`NO` = tally(group_by(datos_comp_sgd, p_semgest),c_dolor =="NO")[2]
+
 
 # Graficar no. de procedimientos por p_semgest
 ggplot(conteo_semgest, aes(x = p_semgest))+
@@ -257,7 +255,7 @@ if (.Platform$OS.type == "windows") {
     Courier = windowsFont("Courier")
   )
 }
-meme("barco.jpg", "No, tampoco aqui encontramos la", "causalidad de tu correlación",size = 0.5, r = 0.1)
+meme("barco.jpg", "No, tampoco aqui encontramos la", "causalidad de tu correlación",size = "auto", r = 0.1)
 
 
 
