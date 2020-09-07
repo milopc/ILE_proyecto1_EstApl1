@@ -1,0 +1,387 @@
+---
+title: "Proyecto 1 - Análisis de datos de ILE en CDMX"
+author: Emiliano Padilla Cardona (166136), Jesús Emilio Vega Hernández (179245), Salvador
+  Rodríguez Carrasco (171943)
+date: "6/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*Para acceder al repositorio con todos los archivos, ir a* https://github.com/milopc/ILE_proyecto1_EstApl1
+
+## INTRODUCCIÓN
+
+Para conocer y entender las cifras oficiales sobre la Interrupción Legal del Embarazo (ILE), decidimos utilizar los datos disponibles en https://datos.cdmx.gob.mx/explore/dataset/interrupcion-legal-del-embarazo/table/ con última modificación el 4 de septiembre de 2020 a las 16:55 horas de la Secretaría de Salud de la Ciudad de México (Ssa, CDMX). Los datos son del 4 de enero de 2016 al 30 de junio de 2020, por lo que ciertas partes del análisis anual comparativo se limitarán al 30 de junio de cada año para obtener resultados más asertivos.
+
+Presentamos la base de datos, junto con las librerías utilizadas:
+
+```{r libs, results = 'hide', error=FALSE, warning=FALSE, message=FALSE}
+# Cargar librerías
+library (readr)
+library (tidyverse)
+library (lubridate)
+library (moments)
+library (ggExtra)
+library (knitr)
+library (kableExtra)
+library (ggplot2)
+library (cowplot)
+library (meme)
+library (dplyr)
+library (tidyr)
+```
+
+```{r datos, results='hide', results = 'hide', warning=FALSE, message=FALSE}
+# Leer base de datos
+datos <- read_csv("interrupcion-legal-del-embarazo.csv")
+dicc <- read_csv("Diccionario de datos ILE.csv")
+
+```
+
+Las variables de la base de datos son las siguientes:
+
+```{r dicc}
+# Visualizar el diccionario de la base de datos
+kable_styling(kable(select(dicc, `Variable`, `Descripción`), booktabs = T), latex_options = "striped")
+
+```
+A continuación, presentaremos los resultados del análisis descriptivo de los datos tomando ciertas consideraciones, mismas que serán informadas al lector.
+
+
+
+## ANÁLISIS DESCRIPTIVO DE LOS DATOS
+
+Nuestro análisis está compuesto de tres partes: análisis de características de las pacientes, análisis de salud reproductiva de la paciente, y análisis de procedimientos de ILE.
+
+
+### Análisis de características de las pacientes
+
+Para esta parte del estudio, buscamos crear una base de datos distinta a la inicial, a la que se le aplicarán modificaciones para la visualización de datos.
+
+* **Edad al momento de la ILE por año**: diagrama de caja y brazos
+
+```{r abortos, results = 'hide', warning=FALSE, message=FALSE }
+# Crear base para trabajar sobre embarazos previos a aborto
+aborto <- datos
+```
+
+```{r caja brazos, warning=FALSE, message=FALSE}
+# Crear base para trabajar sobre embarazos previos a aborto
+(ggplot(datos
+        %>% filter(año != "NA")
+        %>% mutate(año = factor(año)),
+        aes(x = año,
+            y = edad,
+            fill = año)
+)
+  + geom_boxplot()
+  + scale_fill_manual(values = c("#102437", "#274B6C", "#336A98", "#5AA8E6", "#5AA8E6"))
+  + labs(title = "Distribución de edad al momento de la ILE por año",
+         subtitle = "Datos de 2020 hasta el 30 de junio",
+         x = "Año",
+         y = "Edad",
+         caption = "FUENTE: Datos de la Ssa, CDMX")
+  + theme(legend.position = "none")
+)
+```
+
+Se realizó un box-plot para los datos de las edades de las personas que realizaron el procedimiento de ILE para cada uno de los años del 2016 al 2020. En el gráfico se puede ver que todos los años están distribuidos de una manera muy similar. Los cuantiles 25, 50 y 75 están localizados prácticamente en el mismo lugar para todos los años, con una pequeña excepción del año 2016, donde los cuantiles 50 y 75 están un poco por debajo que los de los demás. Es notable que todos los diagramas tienen valores extremos únicamente en el brazo superior.
+
+* **Número de hijos por paciente**: histograma
+```{r nohijos,  warning=FALSE, message=FALSE}
+# Se realiza un histograma que muestra la frecuencia absoluta de las personas que tienen n cantidad de hijos (para n=0,1,2,...,10).
+  # Calcula la media y la mediana del número de hijos
+datos_con_hijos <- datos %>% filter(!is.na(nhijos))
+media_hijos <- mean(datos_con_hijos$nhijos)
+mediana_hijos <- median(datos_con_hijos$nhijos)
+
+(ggplot(aborto,
+        aes(x = nhijos
+        )
+)
+  + geom_histogram(binwidth = .5,
+                   fill = "#102437")
+  + labs(title = "Número de hijos",
+         subtitle = "Datos de 2020 hasta el 30 de junio",
+         x = "Número de hijos",
+         y = "Número de observaciones",
+         caption = "FUENTE: Datos de la Ssa, CDMX")
+  + scale_x_continuous(breaks = seq(from = 0,
+                                    to = 10,
+                                    by = 1
+  )
+  )
+  + scale_y_continuous(limits = c(0, 27500),
+                       breaks = seq(from = 0,
+                                    to = 27500,
+                                    by = 5500
+                       )
+  )
+)
+```
+
+Este histograma representa la distribución de hijos de todas las personas que se trataron. Se calculó la media de esta variable y se encontró que tiene una media de 1.01, la cual usamos para modelar una aproximación a esta distribución con una función exponencial. Encontramos que la función $y=(27480/1.01)e^{-x/1.01}$ se ajusta gráficamente el histograma, por ello se asevera que el decrecimiento se da muy rápidamente. Esto indica que conforme aumenta la cantidad de hijos, se observa un decrecimiento en el número de ILE practicados, sin embargo, no se afirma a que haya una correlación.
+
+
+### Análisis de salud reproductiva de la paciente
+
+En esta parte del estudio analisamos factores como métodos anticonceptivos utilizados por las pacientes que se practican una ILE, presencia de dolor post procedimiento y algunas estadísticas.
+
+* **Estadísticos sobre la edad de inicio de vida sexual**
+
+```{r estvidsex,  warning=FALSE, message=FALSE}
+#Estadísticos de la edad de inicio de vida sexual
+datos_vida_sexual <- datos %>% filter(!is.na(fsexual))
+tabla_vida_sexual <- datos_vida_sexual %>% summarise(Media = mean(fsexual), Mediana = median(fsexual), MAD = mad(fsexual), IQR = IQR(fsexual))
+
+#Tabla de estadísticos de la edad de inicio de la vida sexual
+kable(tabla_vida_sexual, booktabs = T) %>%
+  kable_styling(latex_options = "striped")
+```
+
+El 50% de nuestra población inició su vida sexual a los 17 años, coincidiendo con el promedio de la misma. Las demás personas iniciaron, en promedio, su vida sexual entre los 16 y 18 años. Finalmente,si tomamos a la población que está entre el primer cuartil y el tercer cuartil, evitando los datos muy alejados de la mediana, estas personas iniciaron su vida sexual a los 17±3 años.
+
+* **Uso de un sólo método anticonceptivo**: gráfica de paleta
+
+```{r paletas, warning=FALSE, message=FALSE}
+#Conteo de los métodos anticonceptivos especificados
+datos_anticonceptivos <- datos %>% filter(!is.na(anticonceptivo))
+anticonceptivos <- datos_anticonceptivos %>% group_by(anticonceptivo) %>% tally()
+
+#Nos quedamos con los métodos de un solo anticonceptivo
+unico_antic <- anticonceptivos %>% filter(str_detect(anticonceptivo," \\+",
+                                                     negate = TRUE))
+#Porcentaje de quienes no usan anticonceptivo
+porc_no_antic <- (unico_antic[7,2]/nrow(datos_anticonceptivos))*100
+porc_no_antic <- porc_no_antic$n
+
+#Gráfica de quienes utilizan un solo anticonceptivo
+ggplot(unico_antic, aes(x = anticonceptivo, y = n)) +
+  geom_point(size = 3, color = "#102437") +
+  geom_segment(aes(x=anticonceptivo,
+                   xend = anticonceptivo,
+                   y=0,
+                   yend = n), color = "#102437") +
+  labs( x = "Tipo de anticonceptivo",
+        y = "Cantidad de pacientes",
+        title = "Pacientes que utilizan solamente un anticonceptivo",
+        subtitle = "ILE en CDMX desde 2016 hasta junio 2020",
+        caption = "FUENTE: Datos de la Ssa, CDMX")+
+  theme(axis.text.x = element_text(angle = 90, size = 6))
+```
+
+Se realizó una tabla de las personas que utilizan uno o más anticonceptivos y un gráfico que refleja a las personas que solo utilizan un anticonceptivo regularmente. Dado que las personas que utilizan dos o más anticonceptivos son una proporción muy pequeña, se optó por no incluirlos en el gráfico. Se observa que, dentro de las personas que practican una ILE, el 53.33% no utiliza métodos anticonceptivos. Esta información debe usarse para promover el uso de métodos anticonceptivos de manera efectiva y segura. 
+
+Además, hay quienes usan más de un solo anticonceptivo; sin embargo, solo representan un pequeño porcentaje de la población, como se muestra en la siguiente tabla:
+
+```{r tabfrec, warning=FALSE, message=FALSE}
+# Frecuencia de los anticonceptivos
+frecuencia_antic <- 100*table(datos$anticonceptivo)/nrow(datos)
+kable(frecuencia_antic, booktabs = T,
+      col.names = c("Anticonceptivo","Frecuencia (%)")) %>%
+  kable_styling(latex_options = "hold_positions")
+```
+
+Se puede observar que son menos las personas que procedieron a una ILE y que utilizan dos anticonceptivos habitualmente. Por ejemplo, quienes usan condón y DIU son solo un 0.013%, y quienes usan solamente condón o DIU representan un 24.84% y 3.20%, respectivamente.
+
+* **Presencia de dolor post procedimiento**: gráfica de barras
+
+```{r dolor, warning=FALSE, message=FALSE}
+# Crear base de si se presentó dolor o no
+dolor <- as.data.frame(table(datos$c_dolor))
+colnames(dolor) <- c("r","Cantidad")
+
+# Gráfica de si tuvieron dolor
+ggplot(dolor) + 
+  geom_col(aes(x = r, y = Cantidad), color = c("#102437", "#274B6C"), fill = c("#102437", "#274B6C"), show.legend = FALSE) +
+  labs(
+    x = "¿Presentó dolor?",
+    y = "Cantidad de pacientes",
+    title = "Presencia de dolor en ILE",
+    subtitle = "ILE en CDMX desde 2016 hasta junio 2020",
+    caption = "FUENTE: Datos de la Ssa, CDMX"
+  )
+```
+
+Se analizó una variable binaria sobre si se presentó dolor en la ILE. Es muy alarmante ver que en una enorme parte de la totalidad de los procedimientos se presenta dolor. No es muy clara la base de datos sobre la gravedad del dolor, podría variar desde una molestia hasta un dolor muy severo. Debe de tomarse en cuenta para cuando las personas busquen el procedimiento e identificar qué personas son más propensas a presentar dolor y tratar de minimizarlo.
+
+### Análisis de procedimientos de ILE
+
+En esta parte del estudio se busca estudiar cómo es que varía a través de los años, y los días en estos, el número de procedimientos. Para esta parte, necesitaremos realizar algunas modificaciones a la base de datos.
+
+```{r modifs,  warning=FALSE, message=FALSE}
+# Agregar columnas con mes, día y año en que se realizó el procedimiento del ILE
+datos <- mutate(datos, mes_proced = month(fingreso), 
+                día_año_proced = yday(fingreso), 
+                año_proced = year(fingreso))
+
+# Eliminar entradas de año_proced con NA y 2015 (sólo 1)
+datos <- datos %>% mutate(fingreso = ymd(fingreso))
+datos <- filter(datos, !(year(datos$fingreso) == 2015))
+
+```
+
+* **Procedimientos por año**: gráficas de barras
+
+```{r bars1, warning=FALSE, message=FALSE}
+# Crear base de no. de procedimientos por año TOTALES
+conteo_proced_año <- tally(group_by(datos, año_proced))
+
+# Graficar no. de procedimientos por año TOTALES
+ggplot()+
+  geom_col(aes(x = conteo_proced_año$año_proced, y= conteo_proced_año$n, 
+               color = conteo_proced_año$año_proced, fill = conteo_proced_año$año_proced), show.legend = FALSE)+
+  labs(
+    title = "Procedimientos de ILE totales por año",
+    subtitle = "Datos de 2020 hasta el 30 de junio",
+    x = "Año de procedimiento",
+    y = "Número de procedimientos totales",
+    caption = "FUENTE: Datos de la Ssa, CDMX"
+  )
+```
+
+Aquí podemos ver que los datos de 2016 y 2017 son bastante similares, mientras que hubo una tenedencia a la baja en 2018 y 2019. La razón por la que el número de procedimientos durante el 2020 es que los datos disponibles para este año están actualizados hasta el 30 de junio. Si realizamos una modificación en el conteo para considerar los datos únicamente hasta el 30 de junio por cada año, obtenemos resultados similares, que reflejan la misma tendencia a la baja.
+
+```{r bars2, warning=FALSE, message=FALSE}
+# Crear base que incluya días del año hasta el día 30 de junio (último proced.
+# en 2020 es en esa fecha) para cada año y poder comparar por año
+datos_comp.2020 <- filter(datos, día_año_proced <= 182)
+
+# Crear base de no. de procedimientos por año hasta 30 de junio por año
+conteo_proced_compaño <-tally(group_by(datos_comp.2020, año_proced))
+
+# Graficar no. de procedimientos por año hasta 30 de junio por año
+ggplot()+
+  geom_col(aes(x = conteo_proced_compaño$año_proced, y= conteo_proced_compaño$n, 
+               color = conteo_proced_compaño$año_proced, 
+               fill = conteo_proced_compaño$año_proced), show.legend = FALSE)+
+  labs(
+    title = "Procedimientos de ILE por año",
+    subtitle = "Datos comparativos hasta el 30 de junio, por año",
+    x = "Día (núm.)",
+    y = "Número de procedimientos hasta el 30 de junio",
+    caption = "FUENTE: Datos de la Ssa, CDMX"
+  )
+```
+
+Sin embargo, es evidente una disminución mucho más drástica en el 2020 a comparación del año anterior, por lo cual realizar visualizar los datos por día, por año. Veremos que la pandemia de SARS-CoV-2 y la Jornada Nacional de Sana Distancia (JNSD) tuvieron efectos directos sobre el número de procedimientos de ILE en la CDMX.
+
+* **Procedimientos por día, por año**: gráficas de líneas, comparativas
+
+```{r, lindias, warning = FALSE, message = FALSE}
+# Crear base de no. de procedimientos por día de cada año, TOTALES
+conteo_proced_día <- tally(group_by(datos, fingreso))
+
+# Agregar columnas de día y año a base de no. de procedimientos por día de cada año, TOTALES
+conteo_proced_día <- mutate(conteo_proced_día, día = yday(fingreso),
+                        año = year(fingreso))
+
+# Graficar no. de procedimientos por día de cada año TOTALES
+ggplot(conteo_proced_día, aes(día, n)) + 
+  geom_line(aes(color = año), show.legend=FALSE) + 
+  facet_grid(año ~ .)+
+  geom_vline(xintercept = 83, color = "pink")+ # Inicio de JNSD
+  labs(
+    title = "Procedimientos de ILE por día, por año",
+    subtitle = "Datos de 2020 hasta el 30 de junio",
+    x = "Día (núm.)",
+    y = "Número de procedimientos por día",
+    caption = "FUENTE: Datos de la Ssa, CDMX"
+  )
+```
+
+Se realizaron cinco gráficas de líneas para analizar tendencias repetitivas o contrastes notables entre los años, para cada año de 2016 a 2020. En todas se encontraron algunos picos(principalmente de descensos) y en la gráfica del 2017 se aprecia gran inestabilidad entre los días 250 y 300. Sin embargo, no se observa que haya patrones recurrentes delimitados por temporada (p.e. todas inician y trminan con bajas; navidad y año nuevo).
+
+La gráfica del 2020 muestra un descenso muy notable que se observa a partir del día 83, el 23 de marzo (*linea rosa*), aproximadamente; la conclusión es clara aquí, debido al brote del virus SARS-Cov-2 y la subsecuente JNSD  se redujeron significativamente los procedimientos que se llevaron a cabo. Esto se atribuye enteramente a las condiciones extraordinarias y sí se afirma que hay una causalidad.
+
+Si visualizamos los datos hasta el 30 de junio por año, podremos encontrar que, de hecho, la disminución fue bastante drástica:
+
+```{r, lindias2, warning = FALSE, message = FALSE}
+# Crear base de no. de procedimientos por día hasta 30 de junio por año
+conteo_proced_día_comp2020 <- tally(group_by(datos_comp.2020, fingreso))
+
+# Modificar base de no. de procedimientos por día hasta 30 de junio por año 
+# para agregar columnas de día y año
+conteo_proced_día_comp2020 <- mutate(conteo_proced_día_comp2020, día = yday(fingreso),
+       año = year(fingreso))
+
+#Calcular promedio de procedimientos por día hasta el 30 de junio de todos los años
+prom_dia_comp2020 <- mean(conteo_proced_día_comp2020$n)
+
+# Graficar no. de procedimientos por día hasta 30 de junio de cada año 
+ggplot(conteo_proced_día_comp2020, aes(día, n)) + 
+  geom_line(aes(color = año), show.legend = FALSE) + 
+  facet_grid(año ~ .)+
+  geom_hline(yintercept = prom_dia_comp2020, color = "pink")+ #promedio diario
+  geom_vline(xintercept = 83, color = "pink")+ # Inicio de JNSD
+  labs(
+    title = "Comparativo de procedimientos de ILE por año",
+    subtitle = "Datos comparativos hasta el 30 de junio, por año",
+    x = "Año de procedimiento",
+    y = "Número de procedimientos hasta el 30 de junio",
+    caption = "FUENTE: Datos de la Ssa, CDMX"
+  )
+```
+
+Aquí es más claro entonces: la **línea rosa horizontal** marca los procedimientos diarios en promedio, 65, aprox; la **línea rosa vertical** marca el 23 de junio, inicio de la JNSD. En las gráficas, se puede notar cómo, al pasar los años, el número de procedimientos comenzó a descender, tomando el promedio diario como referencia, mientras que en el 2020, tras el inicio de la JNSD, el número diario de procedimientos cayó drásticamente, en comparación con la tendencia al iniciar el año y las tendencias en caídas de años anteriores.
+
+* **Procedimientos por semana de gestación**: gráfica de columnas.
+
+Ahora queremos analizar el número de procedimientos por semana de gestación durante la cuál se realizan.
+
+Para ello, creamos una base que nos permita realizar la comparación y graficaremos el número de procedimientos por semana de gestación en que se realizaron.
+
+```{r grafsem, warning=FALSE,message=FALSE}
+# Creamos base que nos permita realizar el estudio por semana de geestación
+datos_comp_sgd <- filter(datos, !(is.na(p_semgest)))
+conteo_semgest <- tally(group_by(datos_comp_sgd, p_semgest))
+
+# Graficar no. de procedimientos por p_semgest
+ggplot(conteo_semgest, aes(x = p_semgest))+
+  geom_col(aes(y = n, color = p_semgest, fill = p_semgest), show.legend = FALSE)+
+  geom_vline(xintercept = 12.5, color = "pink")+ # Límite de 12 semanas, legal
+  geom_vline(xintercept = mean(conteo_semgest$p_semgest), 
+             linetype = "dashed", color = "black")+ # media
+  geom_label(aes(x = mean(conteo_semgest$p_semgest), y = 1000),
+             label = "Media")+
+  geom_label(aes(x = 12.5, y = 2500),
+             label = "Lim. legal")+
+  labs(
+    title = "Conteo de procedimientos por semana de gestación",
+    subtitle = "Datos de 2016 hasta 30 de junio de 2020",
+    x = "Semana de gestación",
+    y = "Número de procedimientos",
+    caption = "FUENTE: Datos de la Ssa, CDMX"
+  )
+```
+
+La **línea quebrada** señal la semana de gestación promedio en que se realizan los procedimientos de ILE, mientras que la **línea rosada** señala el límite legal de 12 semanas para realizarse una ILE. 
+
+Por la gráfica, podemos ver que casi ninguna paciente se realiza el procedimiento durante los primeros tres meses, lo cual podría deberse a que las pacientes se enteran de su embarazo hasta meses más avanzados, o bien, a que toman más tiempo para pensar en su decisión. 
+
+Cabe notar que hubo procedimientos fuera del límite legal de doce semanas. Aunque la cantidad fue mínima, esto refleja que muchas mujeres toman una decisión tardía, o que la ley no considera los tiempos necesarios para la decisión.
+
+
+
+
+##CONLCUSIÓN
+
+Los datos son muy claros, y la única modificación esencial en el comportameinto se debió a la pandemia de SARS-CoV-2 y sus implicaciones prácticas en México: la JNSD, el confinamiento y el miedo a contagiarse. Sin embargo, y a pesar de la notable tendencia a la baja a través de los años, la ILE sigue siendo una práctica esencial para el pleno desarrollo de la vida humana de las mujeres hembras en México. 
+
+El derecho al aborto ha hecho las oportunidades vitales más accesibles para jóvenes mexicanas, y continuará siéndolo por siempre, pues el derecho a decidir es un derecho humano.
+
+Y a continuación, un meme...
+
+```{r meme, warning=FALSE, message=FALSE}
+# MEME 
+if (.Platform$OS.type == "windows") {
+  windowsFonts(
+    Impact = windowsFont("Impact"),
+    Courier = windowsFont("Courier")
+  )
+}
+meme("barco.jpg", "No, tampoco aqui encontramos la", "causalidad de tu correlación",size ="auto", r = 0.1)
+```
