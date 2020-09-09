@@ -4,8 +4,8 @@ author: Emiliano Padilla Cardona (166136), Jesús Emilio Vega Hernández (179245
   Rodríguez Carrasco (171943)
 date: "6/9/2020"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -184,7 +184,7 @@ Además, hay quienes usan más de un solo anticonceptivo; sin embargo, solo repr
 frecuencia_antic <- 100*table(datos$anticonceptivo)/nrow(datos)
 kable(frecuencia_antic, booktabs = T,
       col.names = c("Anticonceptivo","Frecuencia (%)")) %>%
-  kable_styling(latex_options = "hold_positions")
+  kable_styling(latex_options = "hold_position")
 ```
 
 Se puede observar que son menos las personas que procedieron a una ILE y que utilizan dos anticonceptivos habitualmente. Por ejemplo, quienes usan condón y DIU son solo un 0.013%, y quienes usan solamente condón o DIU representan un 24.84% y 3.20%, respectivamente.
@@ -369,21 +369,8 @@ Cabe notar que hubo procedimientos fuera del límite legal de doce semanas. Aunq
 
 
 
-##CONLCUSIÓN
+## CONLCUSIÓN
 
 Los datos son muy claros, y la única modificación esencial en el comportameinto se debió a la pandemia de SARS-CoV-2 y sus implicaciones prácticas en México: la JNSD, el confinamiento y el miedo a contagiarse. Sin embargo, y a pesar de la notable tendencia a la baja a través de los años, la ILE sigue siendo una práctica esencial para el pleno desarrollo de la vida humana de las mujeres hembras en México. 
 
 El derecho al aborto ha hecho las oportunidades vitales más accesibles para jóvenes mexicanas, y continuará siéndolo por siempre, pues el derecho a decidir es un derecho humano.
-
-Y a continuación, un meme...
-
-```{r meme, warning=FALSE, message=FALSE}
-# MEME 
-if (.Platform$OS.type == "windows") {
-  windowsFonts(
-    Impact = windowsFont("Impact"),
-    Courier = windowsFont("Courier")
-  )
-}
-meme("barco.jpg", "No, tampoco aqui encontramos la", "causalidad de tu correlación",size ="auto", r = 0.1)
-```

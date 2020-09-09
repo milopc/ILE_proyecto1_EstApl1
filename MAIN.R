@@ -248,7 +248,7 @@ ggplot(conteo_semgest, aes(x = p_semgest))+
   )
 
 
-# MEME 
+# Y ahora, un MEME 
 if (.Platform$OS.type == "windows") {
   windowsFonts(
     Impact = windowsFont("Impact"),
